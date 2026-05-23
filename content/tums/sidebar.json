@@ -1,0 +1,19 @@
+{
+    "Introduction": "/tums/",
+    "Scripting": {
+        "Getting started": "/tums/scripting",
+        "Basics": {
+            "Expressions": "/tums/scripting/basic/expressions",
+            "Variables": "/tums/scripting/basic/variable",
+            "Effects": "/tums/scripting/basic/effects",
+            "Functions": "/tums/scripting/basic/functions",
+            "Loops": "/tums/scripting/basic/loops",
+            "If Statements": "/tums/scripting/basic/if"
+        },
+        "Events": "/tums/scripting/events",
+        "Types":{
+            "Player": "/tums/scripting/types/player",
+            "Entity": "/tums/scripting/types/entity"
+        }
+    }
+}
