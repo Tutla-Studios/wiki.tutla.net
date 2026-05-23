@@ -15,5 +15,9 @@
             "Player": "/tums/scripting/types/player",
             "Entity": "/tums/scripting/types/entity"
         }
+    },
+    "Developer": {
+        "Getting started": "/tums/developer",
+        "Creating your own language": "/tums/developer/creating-your-own"
     }
 }
