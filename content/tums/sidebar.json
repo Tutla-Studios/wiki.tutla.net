@@ -18,6 +18,16 @@
     },
     "Developer": {
         "Getting started": "/tums/developer",
+        "Nodes": {
+            "Node": "/tums/developer/node",
+            "Parsing": "/tums/developer/node/parsing"
+        },
+        "Context": "/tums/developer/context",
+        "Lexer": {
+            "Rules": "/tums/developer/lexer/rules",
+            "Patterns": "/tums/developer/lexer/patterns"
+        },
+        "Interpreter": "/tums/developer/interpreter",
         "Creating your own language": "/tums/developer/creating-your-own"
     }
 }
