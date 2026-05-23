@@ -20,7 +20,7 @@ public class YourModInitializer implements ModInitializer {
 	@Override
 	public void onInitialize() {
         TumsAPI.getGlobalTusan().registerLexerRule(
-            new LexerRule(MyTokenType.EFFECT, 
+            new LexerRule(MyTokenType.HELLO, 
                 WordedPattern.makeOneWordPattern("hello")
             )
         );

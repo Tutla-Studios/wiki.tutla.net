@@ -17,7 +17,7 @@ public class YourModInitializer implements ModInitializer {
 	@Override
 	public void onInitialize() {
         language.registerLexerRule(
-            new LexerRule(MyTokenType.EFFECT, 
+            new LexerRule(MyTokenType.HELLO, 
                 WordedPattern.makeOneWordPattern("hello")
             )
         );
@@ -59,6 +59,6 @@ language.registerLexerRule(
 );
 ```
 
-The `TokenGroup` can be passed as the 3rd parameter.
+The `TokenGroup` can be added by using `.setGroup()`.
 
 In the place of `WordedPattern.makeOneWordPattern("hello")` you can use any regex pattern, to learn more about it read [Patterns](/tums/scripting/lexer/patterns). For example `"\\bhello\\b"`.
