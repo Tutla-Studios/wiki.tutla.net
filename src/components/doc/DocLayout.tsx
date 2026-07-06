@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { ReactNode } from "react"
 import { ChevronLeft, ChevronRight, Pencil } from "lucide-react"
-import { DocNode } from "@/lib/docs"
+import { DocNode, SidebarLinks } from "@/lib/docs"
 import { getPrevNext } from "@/lib/nav"
 import DocSidebar from "./DocSidebar"
 import DocToc from "./DocToc"
@@ -16,6 +16,7 @@ interface DocLayoutProps {
   created?: string
   updated?: string
   breadcrumbs: string[]
+  links?: SidebarLinks
   children: ReactNode
 }
 
@@ -36,13 +37,14 @@ export default function DocLayout({
   created,
   updated,
   breadcrumbs,
+  links,
   children,
 }: DocLayoutProps) {
   const { prev, next } = getPrevNext(docsTree, currentSlug)
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-[#c9d1d9]">
-      <DocNavbar title={title} docsTree={docsTree} currentSlug={currentSlug} />
+      <DocNavbar title={title} docsTree={docsTree} currentSlug={currentSlug} links={links} />
 
       <div className="mx-auto flex w-full max-w-[90rem]">
         {/* Left sidebar */}

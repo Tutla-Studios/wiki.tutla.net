@@ -2,8 +2,8 @@ import fs from "fs"
 import path from "path"
 import matter from "gray-matter"
 import { getMdxSource } from "@/lib/mdx"
-import { readDocsDir, generateDocsUsingContents } from "@/lib/docs"
-import { normalizeToSlug } from "@/lib/nav"
+import { readDocsDir, loadSidebarConfig } from "@/lib/docs"
+import { normalizeToSlug, slugifyHeading } from "@/lib/nav"
 import MdxRenderer from "@/components/MdxRenderer"
 import DocLayout from "@/components/doc/DocLayout"
 import WikiLayout from "@/components/wiki/WikiLayout"
@@ -40,6 +40,15 @@ export async function generateStaticParams(): Promise<{ slug: string[] }[]> {
   }
 
   walk(CONTENT_ROOT)
+
+  // Generated FAQ pages for any project whose sidebar.json defines an "faq".
+  if (fs.existsSync(CONTENT_ROOT)) {
+    for (const entry of fs.readdirSync(CONTENT_ROOT, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name.startsWith(".")) continue
+      const config = loadSidebarConfig(entry.name)
+      if (config?.faq) params.push({ slug: [entry.name, "faq"] })
+    }
+  }
 
   // Also include root index
   params.push({ slug: ["index"] })
@@ -109,7 +118,16 @@ export async function generateMetadata({
   const slugParts = (resolvedParams.slug ?? ["index"]).map((s) => s.toLowerCase())
 
   const filePath = resolveFilePath(slugParts)
-  if (!filePath) return { title: SITE_NAME }
+  if (!filePath) {
+    if (slugParts.length === 2 && slugParts[1] === "faq" && loadSidebarConfig(slugParts[0])?.faq) {
+      return {
+        title: `FAQ — ${SITE_NAME}`,
+        description: `Frequently asked questions about ${slugParts[0]}`,
+        alternates: { canonical: `${SITE_URL}/${slugParts.join("/")}` },
+      }
+    }
+    return { title: SITE_NAME }
+  }
 
   const fileContent = fs.readFileSync(filePath, "utf8")
   const { content, data } = matter(fileContent)
@@ -169,6 +187,34 @@ export default async function WikiPage({
     const slugParts = (resolvedParams.slug ?? ["index"]).map((s) => s.toLowerCase())
 
     const filePath = resolveFilePath(slugParts)
+
+    // Generated FAQ page — no markdown file backs this route.
+    if (!filePath && slugParts.length === 2 && slugParts[1] === "faq") {
+      const config = loadSidebarConfig(slugParts[0])
+      if (config?.faq) {
+        const project = slugParts[0]
+        const faqHeadings = Object.keys(config.faq).map((q) => ({ text: q, level: 2 }))
+        return (
+          <DocLayout
+            title="FAQ"
+            docsTree={config.tree}
+            currentSlug={`/${project}/faq`}
+            headings={faqHeadings}
+            editUrl={`https://github.com/TutlaMC/wiki.tutla.net/tree/main/content/${project}/sidebar.json`}
+            breadcrumbs={[project, "faq"]}
+            links={config.links}
+          >
+            {Object.entries(config.faq).map(([question, answer]) => (
+              <section key={question}>
+                <h2 id={slugifyHeading(question)}>{question}</h2>
+                <p>{answer}</p>
+              </section>
+            ))}
+          </DocLayout>
+        )
+      }
+    }
+
     if (!filePath) {
       return (
         <div className="flex items-center justify-center min-h-screen bg-[#0d1117] text-[#c9d1d9]">
@@ -190,16 +236,12 @@ export default async function WikiPage({
 
     // Sidebar
     let docsTree = null
+    let links = undefined
     if (slugParts[0]) {
-      const sidebarPath = path.join(CONTENT_ROOT, slugParts[0], "sidebar.json")
-      if (fs.existsSync(sidebarPath)) {
-        try {
-          docsTree = generateDocsUsingContents(
-            JSON.parse(fs.readFileSync(sidebarPath, "utf8"))
-          )
-        } catch (e) {
-          console.error(`Error parsing sidebar.json for ${slugParts[0]}:`, e)
-        }
+      const sidebarConfig = loadSidebarConfig(slugParts[0])
+      if (sidebarConfig) {
+        docsTree = sidebarConfig.tree
+        links = sidebarConfig.links
       } else if (docRoot) {
         docsTree = readDocsDir(docRoot)
       }
@@ -248,6 +290,7 @@ export default async function WikiPage({
             created={created}
             updated={updated}
             breadcrumbs={breadcrumbs}
+            links={links}
           >
             <MdxRenderer mdxSource={mdxSource} />
           </DocLayout>
