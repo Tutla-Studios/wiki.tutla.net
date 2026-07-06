@@ -2,6 +2,7 @@ import { serialize } from "next-mdx-remote/serialize"
 import remarkGfm from "remark-gfm"
 import remarkDeflist from "remark-deflist"
 import rehypePrettyCode from "rehype-pretty-code"
+import rehypeSlug from "rehype-slug"
 import { visit } from "unist-util-visit"
 import type { Root, Heading, Text } from "mdast"
 
@@ -62,7 +63,7 @@ export async function getMdxSource(content: string) {
     const mdxSource = await serialize(content, {
       mdxOptions: {
         remarkPlugins: [remarkGfm, remarkDeflist, remarkCollectHeadings, remarkNotifSyntax],
-        rehypePlugins: [[rehypePrettyCode, { theme: "github-dark" }]],
+        rehypePlugins: [rehypeSlug, [rehypePrettyCode, { theme: "github-dark" }]],
       },
     })
     

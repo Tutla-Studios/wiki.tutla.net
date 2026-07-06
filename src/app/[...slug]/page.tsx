@@ -3,11 +3,10 @@ import path from "path"
 import matter from "gray-matter"
 import { getMdxSource } from "@/lib/mdx"
 import { readDocsDir, generateDocsUsingContents } from "@/lib/docs"
-import LeftSidebar from "@/components/LeftSidebar"
-import RightSidebar from "@/components/RightSidebar"
+import { normalizeToSlug } from "@/lib/nav"
 import MdxRenderer from "@/components/MdxRenderer"
-import Navbar from "@/components/Navbar"
-import { Edit2 } from "lucide-react"
+import DocLayout from "@/components/doc/DocLayout"
+import WikiLayout from "@/components/wiki/WikiLayout"
 import type { Metadata } from "next"
 
 const CONTENT_ROOT = path.join(process.cwd(), "content")
@@ -172,7 +171,7 @@ export default async function WikiPage({
     const filePath = resolveFilePath(slugParts)
     if (!filePath) {
       return (
-        <div className="flex items-center justify-center min-h-screen bg-[#151a21] text-[#c9d1d9]">
+        <div className="flex items-center justify-center min-h-screen bg-[#0d1117] text-[#c9d1d9]">
           <div className="text-center">
             <h1 className="text-4xl font-bold mb-4">404</h1>
             <p className="text-[#8b949e]">Page not found</p>
@@ -208,6 +207,11 @@ export default async function WikiPage({
 
     const firstImage = getFirstImage(content)
     const canonicalUrl = `${SITE_URL}/${slugParts.filter((s) => s !== "index").join("/")}`
+    const currentSlug = normalizeToSlug(filePath)
+    const breadcrumbs = slugParts.filter((s) => s !== "index")
+    const editUrl = `https://github.com/TutlaMC/wiki.tutla.net/tree/main/${editPath}`
+    const created = data.created ? String(data.created) : undefined
+    const updated = data.updated ? String(data.updated) : undefined
 
     // JSON-LD structured data
     const jsonLd = {
@@ -234,76 +238,32 @@ export default async function WikiPage({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
 
-        <div>
-          <Navbar
+        {isDoc ? (
+          <DocLayout
             title={String(data.title)}
             docsTree={docsTree}
-            currentPath={filePath}
-            isDoc={isDoc}
+            currentSlug={currentSlug}
             headings={headings}
-          />
-
-          <div className="flex min-h-screen bg-[#151a21] text-[#c9d1d9]">
-            <div className="hidden md:block">
-              <LeftSidebar
-                title={String(data.title)}
-                docsTree={docsTree}
-                currentPath={filePath}
-                isDoc={isDoc}
-                headings={headings}
-              />
-            </div>
-
-            <main className="flex-1 max-w-4xl mx-auto p-6">
-              {/* Semantic heading with visible title */}
-              <h1 className="mb-2 text-5xl font-bold">{data.title}</h1>
-
-              {/* Show dates if present — good for freshness signals */}
-              {(data.created || data.updated) && (
-                <p className="text-sm text-[#8b949e] mb-6 flex gap-4">
-                  {data.created && (
-                    <time dateTime={data.created}>
-                      Created{" "}
-                      {new Date(data.created).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </time>
-                  )}
-                  {data.updated && data.updated !== data.created && (
-                    <time dateTime={data.updated}>
-                      Updated{" "}
-                      {new Date(data.updated).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </time>
-                  )}
-                </p>
-              )}
-
-              <article className="prose prose-invert max-w-none">
-                <MdxRenderer mdxSource={mdxSource} />
-              </article>
-
-              <div className="mt-6">
-                <hr className="border-[#30363d]" />
-                <a
-                  href={`https://github.com/TutlaMC/wiki.tutla.net/tree/main/${editPath}`}
-                  className="mt-6 flex items-center font-extrabold space-x-2 text-blue-400 text-xl hover:underline"
-                  rel="noopener noreferrer"
-                  target="_blank"
-                >
-                  <Edit2 className="mr-2" /> Edit this page
-                </a>
-              </div>
-            </main>
-
-            <RightSidebar image={firstImage} data={data} />
-          </div>
-        </div>
+            editUrl={editUrl}
+            created={created}
+            updated={updated}
+            breadcrumbs={breadcrumbs}
+          >
+            <MdxRenderer mdxSource={mdxSource} />
+          </DocLayout>
+        ) : (
+          <WikiLayout
+            title={String(data.title)}
+            summary={data.summary ? String(data.summary) : undefined}
+            headings={headings}
+            editUrl={editUrl}
+            created={created}
+            updated={updated}
+            image={firstImage}
+          >
+            <MdxRenderer mdxSource={mdxSource} />
+          </WikiLayout>
+        )}
       </>
     )
   } catch (error) {
