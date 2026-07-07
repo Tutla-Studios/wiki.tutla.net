@@ -57,22 +57,27 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 export async function GET(req: NextRequest) {
-  ensureFuse()
-  const q = req.nextUrl.searchParams.get("q")?.trim() || ""
-  if (!q) return NextResponse.json([])
+  try {
+    ensureFuse()
+    const q = req.nextUrl.searchParams.get("q")?.trim() || ""
+    if (!q) return NextResponse.json([])
 
-  const res = (fuse as Fuse<Doc>).search(q, { limit: 10 })
-  const payload = res.map(r => {
-    const m =
-      r.matches?.find(mm => mm.key === "content") ||
-      r.matches?.find(mm => mm.key === "summary") ||
-      r.matches?.find(mm => mm.key === "title")
-    return {
-      title: r.item.title,
-      summary: r.item.summary,
-      path: r.item.path,
-      snippetHtml: m ? snippetHtmlFromMatch(m) : "",
-    }
-  })
-  return NextResponse.json(payload)
+    const res = (fuse as Fuse<Doc>).search(q, { limit: 10 })
+    const payload = res.map(r => {
+      const m =
+        r.matches?.find(mm => mm.key === "content") ||
+        r.matches?.find(mm => mm.key === "summary") ||
+        r.matches?.find(mm => mm.key === "title")
+      return {
+        title: r.item.title,
+        summary: r.item.summary,
+        path: r.item.path,
+        snippetHtml: m ? snippetHtmlFromMatch(m) : "",
+      }
+    })
+    return NextResponse.json(payload)
+  } catch (error) {
+    console.error("Error in /api/search:", error)
+    return NextResponse.json([], { status: 200 })
+  }
 }

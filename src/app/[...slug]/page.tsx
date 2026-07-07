@@ -114,6 +114,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug?: string[] }>
 }): Promise<Metadata> {
+  try {
   const resolvedParams = await params
   const slugParts = (resolvedParams.slug ?? ["index"]).map((s) => s.toLowerCase())
 
@@ -172,6 +173,10 @@ export async function generateMetadata({
       follow: true,
       googleBot: { index: true, follow: true },
     },
+  }
+  } catch (error) {
+    console.error("Error in generateMetadata:", error)
+    return { title: SITE_NAME }
   }
 }
 
