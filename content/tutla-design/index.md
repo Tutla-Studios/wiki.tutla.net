@@ -1,8 +1,8 @@
 ---
 title: "Tutla Design"
 summary: "Warm gold on near-black. Primitives, animations and composite React components."
-created: "2026-07-06"
-updated: "2026-07-06"
+created: "2026-07-07"
+updated: "2026-07-07"
 isdoc: true
 ---
 
@@ -23,4 +23,3 @@ import "@tutla/design/styles";
 - **Components** — Accordion, CategoryBar, ColorPicker, ContextMenu, CredRow, CTABanner, DatePicker, FeatureCard, FeatureRow, Message, Navbar, ProjectCard, RichTextEditor, Table, Terminal, Tooltip
 - **Nodes** — Node, Port, Wire
 - **Styles** — CSS Animations
-
