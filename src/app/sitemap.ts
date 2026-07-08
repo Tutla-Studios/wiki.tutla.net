@@ -7,7 +7,7 @@ import matter from "gray-matter"
 import type { MetadataRoute } from "next"
 
 const CONTENT_ROOT = path.join(process.cwd(), "content")
-const SITE_URL = "https://wiki.tutla.net"
+const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://wiki.tutla.net"
 
 type SitemapEntry = MetadataRoute.Sitemap[number]
 
