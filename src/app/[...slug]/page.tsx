@@ -8,6 +8,7 @@ import MdxRenderer from "@/components/MdxRenderer"
 import DocLayout from "@/components/doc/DocLayout"
 import WikiLayout from "@/components/wiki/WikiLayout"
 import type { Metadata } from "next"
+import { redirect } from "next/navigation"
 
 const CONTENT_ROOT = path.join(process.cwd(), "content")
 const SITE_URL = "https://wiki.tutla.net"
@@ -137,7 +138,10 @@ export async function generateMetadata({
   const firstImage = getFirstImage(content)
   const title = data.title ? `${data.title} — ${SITE_NAME}` : SITE_NAME
   const description = data.summary || `${data.title} on ${SITE_NAME}`
-
+  const redir = data.redirect
+  if (redir){
+    redirect(redir);
+  }
   return {
     title,
     description,
