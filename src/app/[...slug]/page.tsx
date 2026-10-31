@@ -2,7 +2,7 @@ import fs from "fs"
 import path from "path"
 import matter from "gray-matter"
 import { getMdxSource } from "@/lib/mdx"
-import { readDocsDir, loadSidebarConfig } from "@/lib/docs"
+import { readDocsDir } from "@/lib/docs"
 import { normalizeToSlug, slugifyHeading } from "@/lib/nav"
 import MdxRenderer from "@/components/MdxRenderer"
 import DocLayout from "@/components/doc/DocLayout"
@@ -15,6 +15,7 @@ import {
   loadRemoteContent,
   remoteTitle,
   githubBlobUrl,
+  getProjectSidebar,
   appendRemoteTrees,
   type RemotePage,
   type RemoteContent,
@@ -56,7 +57,7 @@ export async function generateStaticParams(): Promise<{ slug: string[] }[]> {
   if (fs.existsSync(CONTENT_ROOT)) {
     for (const entry of fs.readdirSync(CONTENT_ROOT, { withFileTypes: true })) {
       if (!entry.isDirectory() || entry.name.startsWith(".")) continue
-      const config = loadSidebarConfig(entry.name)
+      const config = await getProjectSidebar(entry.name)
       if (config?.faq) params.push({ slug: [entry.name, "faq"] })
     }
   }
@@ -154,7 +155,7 @@ export async function generateMetadata({
         robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
       }
     }
-    if (slugParts.length === 2 && slugParts[1] === "faq" && loadSidebarConfig(slugParts[0])?.faq) {
+    if (slugParts.length === 2 && slugParts[1] === "faq" && (await getProjectSidebar(slugParts[0]))?.faq) {
       return {
         title: `FAQ — ${SITE_NAME}`,
         description: `Frequently asked questions about ${slugParts[0]}`,
@@ -232,9 +233,10 @@ async function renderRemote(remote: RemotePage, rc: RemoteContent, slugParts: st
     rendered = await getMdxSource(fence + "\n" + rc.content + "\n" + fence, "md")
   }
 
-  const sidebarConfig = loadSidebarConfig(project)
-  const baseTree = sidebarConfig ? sidebarConfig.tree : readDocsDir(path.join(CONTENT_ROOT, project))
-  const docsTree = await appendRemoteTrees(baseTree, project)
+  const sidebarConfig = await getProjectSidebar(project)
+  const docsTree = sidebarConfig
+    ? sidebarConfig.tree
+    : await appendRemoteTrees(readDocsDir(path.join(CONTENT_ROOT, project)), project)
   const canonicalUrl = `${SITE_URL}${remote.slug}`
 
   const jsonLd = {
@@ -279,14 +281,14 @@ export default async function WikiPage({
 
     // Generated FAQ page — no markdown file backs this route.
     if (!filePath && slugParts.length === 2 && slugParts[1] === "faq") {
-      const config = loadSidebarConfig(slugParts[0])
+      const config = await getProjectSidebar(slugParts[0])
       if (config?.faq) {
         const project = slugParts[0]
         const faqHeadings = Object.keys(config.faq).map((q) => ({ text: q, level: 2 }))
         return (
           <DocLayout
             title="FAQ"
-            docsTree={await appendRemoteTrees(config.tree, project)}
+            docsTree={config.tree}
             currentSlug={`/${project}/faq`}
             headings={faqHeadings}
             editUrl={`https://github.com/TutlaMC/wiki.tutla.net/edit/main/content/${project}/sidebar.json`}
@@ -334,9 +336,9 @@ export default async function WikiPage({
     let docsTree = null
     let links = undefined
     if (slugParts[0]) {
-      const sidebarConfig = loadSidebarConfig(slugParts[0])
+      const sidebarConfig = await getProjectSidebar(slugParts[0])
       if (sidebarConfig) {
-        docsTree = await appendRemoteTrees(sidebarConfig.tree, slugParts[0])
+        docsTree = sidebarConfig.tree
         links = sidebarConfig.links
       } else if (docRoot) {
         docsTree = await appendRemoteTrees(readDocsDir(docRoot), slugParts[0])

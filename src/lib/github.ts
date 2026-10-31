@@ -1,7 +1,7 @@
 import fs from "fs"
 import path from "path"
 import matter from "gray-matter"
-import type { DocNode } from "./docs"
+import { parseSidebarConfig, loadSidebarConfig, type DocNode, type SidebarConfig } from "./docs"
 
 // ─── GitHub-backed content ───────────────────────────────────────────────────
 // Any directory under /content that contains a `github.txt` file is a "mount".
@@ -125,22 +125,43 @@ interface TreeEntry { path: string; type: string; size?: number }
 
 const pageCache = new Map<string, Promise<RemotePage[]>>()
 
-async function fetchMountPages(mount: GithubMount): Promise<RemotePage[]> {
+const treeCache = new Map<string, Promise<TreeEntry[]>>()
+
+function getMountTree(mount: GithubMount): Promise<TreeEntry[]> {
+  let p = treeCache.get(mount.prefix)
+  if (!p) {
+    p = fetchTree(mount).catch((e) => {
+      console.error(`Error fetching GitHub mount ${mount.url}:`, e)
+      treeCache.delete(mount.prefix) // retry next time
+      return []
+    })
+    treeCache.set(mount.prefix, p)
+  }
+  return p
+}
+
+async function fetchTree(mount: GithubMount): Promise<TreeEntry[]> {
   const api = `https://api.github.com/repos/${mount.owner}/${mount.repo}/git/trees/${encodeURIComponent(mount.ref)}?recursive=1`
   const res = await fetch(api, { headers: headers(), next: { revalidate: REVALIDATE } })
   if (!res.ok) throw new Error(`GitHub tree request failed (${res.status}) for ${mount.url}`)
   const json = (await res.json()) as { tree: TreeEntry[]; truncated?: boolean }
   if (json.truncated) console.warn(`GitHub tree truncated for ${mount.url}; some files may be missing`)
+  return json.tree
+}
 
+async function fetchMountPages(mount: GithubMount): Promise<RemotePage[]> {
+  const tree = await getMountTree(mount)
   const base = mount.subpath ? mount.subpath + "/" : ""
   const pages: RemotePage[] = []
   const seen = new Set<string>()
 
-  for (const entry of json.tree) {
+  for (const entry of tree) {
     if (entry.type !== "blob" || !entry.path.startsWith(base)) continue
     const rel = entry.path.slice(base.length)
     if (!rel || rel.split("/").some((s) => s.startsWith("."))) continue
     if (!isTextFile(rel) || (entry.size ?? 0) > MAX_FILE_BYTES) continue
+    // A sidebar.json at the mount root configures the sidebar; it is not a page.
+    if (rel.toLowerCase() === "sidebar.json") continue
 
     const isMarkdown = /\.(md|mdx)$/i.test(rel)
     const segs = rel.split("/")
@@ -197,12 +218,12 @@ export async function findRemotePage(slugParts: string[]): Promise<RemotePage | 
 
 const contentCache = new Map<string, Promise<string | null>>()
 
-function fetchRaw(page: RemotePage): Promise<string | null> {
-  const { owner, repo, ref } = page.mount
-  const id = `${owner}/${repo}@${ref}:${page.repoPath}`
+function fetchRaw(mount: GithubMount, repoPath: string): Promise<string | null> {
+  const { owner, repo, ref } = mount
+  const id = `${owner}/${repo}@${ref}:${repoPath}`
   let p = contentCache.get(id)
   if (!p) {
-    const url = `https://raw.githubusercontent.com/${owner}/${repo}/${encodeURIComponent(ref)}/${page.repoPath.split("/").map(encodeURIComponent).join("/")}`
+    const url = `https://raw.githubusercontent.com/${owner}/${repo}/${encodeURIComponent(ref)}/${repoPath.split("/").map(encodeURIComponent).join("/")}`
     p = fetch(url, { headers: headers(), next: { revalidate: REVALIDATE } })
       .then((r) => (r.ok ? r.text() : null))
       .catch(() => null)
@@ -253,7 +274,7 @@ function rewriteLinks(md: string, page: RemotePage, pages: RemotePage[]): string
 }
 
 export async function loadRemoteContent(page: RemotePage): Promise<RemoteContent | null> {
-  const raw = await fetchRaw(page)
+  const raw = await fetchRaw(page.mount, page.repoPath)
   if (raw === null) return null
 
   if (page.isMarkdown) {
@@ -328,4 +349,86 @@ export async function appendRemoteTrees(tree: DocNode[], project: string): Promi
     else out.push({ name: mount.parts[mount.parts.length - 1], path: mount.prefix, isDir: true, children: nodes })
   }
   return out
+}
+
+
+// ─── sidebar.json inside a synced folder ─────────────────────────────────────
+
+// Page values in a synced sidebar.json may be absolute wiki URLs ("/tums/events")
+// or paths relative to the mounted folder ("guide/intro.md").
+function resolveSidebarValue(mount: GithubMount, value: string): string {
+  if (value.startsWith("/") || /^[a-z][a-z0-9+.-]*:/i.test(value)) return value
+  const cleaned = value
+    .replace(/^\.\//, "")
+    .replace(/\.(md|mdx)$/i, "")
+    .replace(/(^|\/)(index|readme)$/i, "")
+    .replace(/\/+$/, "")
+  return cleaned ? `${mount.prefix}/${cleaned}` : mount.prefix
+}
+
+const sidebarCache = new Map<string, Promise<SidebarConfig | null>>()
+
+export function getMountSidebar(mount: GithubMount): Promise<SidebarConfig | null> {
+  let p = sidebarCache.get(mount.prefix)
+  if (!p) {
+    p = (async () => {
+      const tree = await getMountTree(mount)
+      const base = mount.subpath ? mount.subpath + "/" : ""
+      const entry = tree.find((e) => e.type === "blob" && e.path.toLowerCase() === base.toLowerCase() + "sidebar.json")
+      if (!entry) return null
+      const text = await fetchRaw(mount, entry.path)
+      if (text === null) return null
+      return parseSidebarConfig(text, mount.parts[0], (v) => resolveSidebarValue(mount, v))
+    })().catch(() => null)
+    sidebarCache.set(mount.prefix, p)
+  }
+  return p
+}
+
+// The sidebar config for a project, as if every synced sidebar.json had always
+// been part of it:
+//  - a local content/<project>/sidebar.json wins, extended by synced folders
+//  - otherwise a sidebar.json synced into the project root becomes the sidebar
+//  - links and FAQ from synced sidebars fill in anything the project lacks
+export async function getProjectSidebar(project: string): Promise<SidebarConfig | null> {
+  const local = loadSidebarConfig(project)
+  const mounts = findMountsForProject(project)
+  if (mounts.length === 0) return local
+
+  const links = { ...(local?.links ?? {}) }
+  let faq = local?.faq ?? null
+  let tree: DocNode[] = local ? local.tree.filter((n) => !(n.path === `/${project}/faq` && !n.isDir)) : []
+  let any = Boolean(local)
+
+  const hasSlug = (nodes: DocNode[], prefix: string): boolean =>
+    nodes.some((n) => (n.isDir && n.children ? hasSlug(n.children, prefix) : !n.isDir && n.path.toLowerCase().startsWith(prefix)))
+
+  // Root mounts first so their sidebar becomes the base tree.
+  const ordered = [...mounts].sort((a, b) => a.parts.length - b.parts.length)
+  for (const mount of ordered) {
+    const rs = await getMountSidebar(mount)
+    if (rs) {
+      any = true
+      for (const [k, v] of Object.entries(rs.links)) if (!(k in links)) (links as Record<string, string>)[k] = v
+      if (!faq && rs.faq) faq = rs.faq
+      if (mount.parts.length === 1 && !local && tree.length === 0) {
+        tree = rs.tree.filter((n) => !(n.path === `/${project}/faq` && !n.isDir))
+      } else if (!hasSlug(tree, mount.prefix.toLowerCase() + "/")) {
+        const nodes = rs.tree.filter((n) => !(n.path === `/${mount.parts[0]}/faq` && !n.isDir))
+        if (mount.parts.length === 1) tree.push(...nodes)
+        else tree.push({ name: mount.parts[mount.parts.length - 1], path: mount.prefix, isDir: true, children: nodes })
+      }
+      continue
+    }
+    const pages = await getMountPages(mount)
+    if (pages.length === 0 || hasSlug(tree, mount.prefix.toLowerCase() + "/")) continue
+    any = true
+    const nodes = buildRemoteTree(pages, mount)
+    if (mount.parts.length === 1) tree.push(...nodes)
+    else tree.push({ name: mount.parts[mount.parts.length - 1], path: mount.prefix, isDir: true, children: nodes })
+  }
+
+  if (!any) return local
+  if (faq) tree.push({ name: "FAQ", path: `/${project}/faq`, isDir: false })
+  return { links, faq, tree }
 }

@@ -69,13 +69,29 @@ export function loadSidebarConfig(project: string): SidebarConfig | null {
   const sidebarPath = path.join(CONTENT_ROOT, project, "sidebar.json")
   if (!fs.existsSync(sidebarPath)) return null
 
-  let raw: Record<string, unknown>
   try {
-    raw = JSON.parse(fs.readFileSync(sidebarPath, "utf8"))
+    return parseSidebarConfig(fs.readFileSync(sidebarPath, "utf8"), project)
   } catch (error) {
     console.error(`Error parsing sidebar.json for ${project}:`, error)
     return null
   }
+}
+
+// Interpret sidebar.json text. `resolve` optionally rewrites page values
+// (used for sidebar.json files that live in a synced GitHub folder).
+export function parseSidebarConfig(
+  text: string,
+  project: string,
+  resolve: (value: string) => string = (v) => v
+): SidebarConfig | null {
+  let raw: Record<string, unknown>
+  try {
+    raw = JSON.parse(text)
+  } catch (error) {
+    console.error(`Error parsing sidebar.json for ${project}:`, error)
+    return null
+  }
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null
 
   const links: SidebarLinks = {}
   if (typeof raw.github === "string") links.github = raw.github
@@ -96,7 +112,7 @@ export function loadSidebarConfig(project: string): SidebarConfig | null {
     if (!RESERVED_KEYS.has(key)) contentEntries[key] = value
   }
 
-  const tree = generateDocsUsingContents(contentEntries)
+  const tree = generateDocsUsingContents(contentEntries, resolve)
   if (faq) {
     tree.push({ name: "FAQ", path: `/${project}/faq`, isDir: false })
   }
@@ -104,7 +120,10 @@ export function loadSidebarConfig(project: string): SidebarConfig | null {
   return { links, faq, tree }
 }
 
-export function generateDocsUsingContents(sidebarContents: Record<string, unknown>): DocNode[] {
+export function generateDocsUsingContents(
+  sidebarContents: Record<string, unknown>,
+  resolve: (value: string) => string = (v) => v
+): DocNode[] {
   const result: DocNode[] = []
   
   try {
@@ -114,12 +133,12 @@ export function generateDocsUsingContents(sidebarContents: Record<string, unknow
           name: key,
           path: key,
           isDir: true,
-          children: generateDocsUsingContents(value as Record<string, unknown>)
+          children: generateDocsUsingContents(value as Record<string, unknown>, resolve)
         })
       } else if (typeof value === "string") {
         result.push({
           name: key,
-          path: value,
+          path: resolve(value),
           isDir: false
         })
       }
