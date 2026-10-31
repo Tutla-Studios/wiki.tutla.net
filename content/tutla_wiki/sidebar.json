@@ -1,0 +1,27 @@
+{
+    "github": "https://github.com/TutlaMC/wiki.tutla.net",
+    "website": "https://tutla.net",
+    "faq": {
+        "Do I need to know how to code to contribute?": "No. Pages are plain Markdown files. If you can write a document and open a pull request on GitHub, you can contribute.",
+        "Where do I put images?": "Put them in public/content/<project>/ and reference them as /content/<project>/<file> in your Markdown.",
+        "Why does my page crash the build with a strange error?": "Local pages are compiled as MDX, so a bare curly brace or less-than sign in normal text can break them. Wrap code in backticks or escape the character with a backslash.",
+        "Can I document a project without copying its docs into this repo?": "Yes. Drop a github.txt file containing a GitHub folder URL into a content folder and the wiki will pull in that whole folder automatically.",
+        "How do I make a page that only shows up in search and not in the sidebar?": "Create the Markdown file but leave it out of sidebar.json. It will still be routable, searchable and listed in the sitemap."
+    },
+    "Introduction": "/tutla_wiki/",
+    "Getting started": "/tutla_wiki/getting-started",
+    "Tutorial": "/tutla_wiki/tutorial",
+    "Writing": {
+        "Pages and layouts": "/tutla_wiki/writing/pages",
+        "Frontmatter": "/tutla_wiki/writing/frontmatter",
+        "Markdown reference": "/tutla_wiki/writing/markdown",
+        "Style guide": "/tutla_wiki/writing/style-guide"
+    },
+    "Features": {
+        "Sidebar and FAQ": "/tutla_wiki/features/sidebar",
+        "GitHub sync": "/tutla_wiki/features/github-sync",
+        "Search": "/tutla_wiki/features/search",
+        "SEO and indexing": "/tutla_wiki/features/seo"
+    },
+    "Contributing": "/tutla_wiki/contributing"
+}
