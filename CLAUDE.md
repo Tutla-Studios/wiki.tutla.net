@@ -1,0 +1,1 @@
+Once any updates are done to the structure or how developers will continue to use Tutla Wiki, make sure the update content/tutla_wiki.
