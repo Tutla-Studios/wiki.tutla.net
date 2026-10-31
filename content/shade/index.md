@@ -6,7 +6,7 @@ updated: "2025-08-15"
 isdoc: false
 ---
 
-Shade is a Co Owner of Tutla.Net / Tutla Studios along with [TutlaMC](/tutlamc) & [Ardtyss](/ardtyss). He also Co-owns [Tyler Vitelli's Discord](/tylervitelli_discord) & is a Head Administrator at [Hxsain's](https://youtube.com/@hxsain) Discord. He is partially responsilbe for the creation of [Tusk](/tusk) & [Tusan](/tusan).
+Shade was once  a Co Owner of Tutla.Net / Tutla Studios along with [TutlaMC](/tutlamc) & [Ardtyss](/ardtyss). He also Co-owns [Tyler Vitelli's Discord](/tylervitelli_discord) & is a Head Administrator at [Hxsain's](https://youtube.com/@hxsain) Discord. He is partially responsilbe for the creation of [Tusk](/tusk) & [Tusan](/tusan).
 
 ![shade](/content/shade/2025.png)
 > i look goofy
@@ -73,7 +73,7 @@ Shade's position on this server was solidified after this event after many memeb
 ## Contribution to Tutla Studios
 ---
 
-Shade is responsible for the creation of Tusk & Tusan. Thanks to shade, Tutla Studios has managed to market Tusan & brought it's use to Tyler Vitelli's Discord in 2025 which led to the development of Tusan leading to the development of [Tums](/tums) & the [Tutla Wiki](/tutla_wiki) for documenting it & during his time period the development of Tutla Accounts. He was later promoted to Co Owner on 5th of August, 2025.
+Shade is responsible for the creation of Tusk & Tusan. Thanks to shade, Tutla Studios has managed to market Tusan & brought it's use to Tyler Vitelli's Discord in 2025 which led to the development of Tusan leading to the development of [Tums](/tums) & the [Tutla Wiki](/tutla_wiki) for documenting it & during his time period the development of Tutla Accounts. He was later promoted to Co Owner on 5th of August, 2025 & left the team a year later.
 
 ## History
 
