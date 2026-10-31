@@ -1,6 +1,7 @@
 import fs from "fs"
 import path from "path"
 import matter from "gray-matter"
+import { getAllRemotePages, loadRemoteContent, remoteTitle } from "@/lib/github"
 
 export const revalidate = 3600
 
@@ -40,7 +41,24 @@ function walk(dir: string, parts: string[] = []): Page[] {
 }
 
 export async function GET() {
-  const pages = walk(CONTENT_ROOT).sort((a, b) => a.slug.localeCompare(b.slug))
+  const local = walk(CONTENT_ROOT)
+  const seen = new Set(local.map((p) => p.slug.toLowerCase()))
+  const remote: Page[] = []
+  for (const rp of await getAllRemotePages()) {
+    const slug = rp.slug.replace(/^\//, "")
+    if (seen.has(slug.toLowerCase())) continue
+    let title = rp.title
+    let summary = ""
+    if (rp.isMarkdown) {
+      const c = await loadRemoteContent(rp)
+      if (c) {
+        title = remoteTitle(rp, c)
+        summary = String(c.data.summary ?? "")
+      }
+    }
+    remote.push({ slug, title, summary })
+  }
+  const pages = [...local, ...remote].sort((a, b) => a.slug.localeCompare(b.slug))
 
   // Group by top-level project (first slug segment).
   const groups = new Map<string, Page[]>()

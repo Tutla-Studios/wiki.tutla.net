@@ -5,6 +5,7 @@ import fs from "fs"
 import path from "path"
 import matter from "gray-matter"
 import type { MetadataRoute } from "next"
+import { getAllRemotePages } from "@/lib/github"
 
 const CONTENT_ROOT = path.join(process.cwd(), "content")
 const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://wiki.tutla.net"
@@ -68,8 +69,15 @@ function walkContent(dir: string, parts: string[] = []): SitemapEntry[] {
   return entries
 }
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entries = walkContent(CONTENT_ROOT)
+  const have = new Set(entries.map((e) => e.url))
+  for (const page of await getAllRemotePages()) {
+    const url = `${SITE_URL}${page.slug}`
+    if (have.has(url)) continue
+    const depth = page.slug.split("/").filter(Boolean).length
+    entries.push({ url, changeFrequency: "weekly", priority: depth <= 2 ? 0.6 : 0.4 })
+  }
   entries.unshift({ url: SITE_URL, changeFrequency: "daily", priority: 1.0 })
   return entries
 }

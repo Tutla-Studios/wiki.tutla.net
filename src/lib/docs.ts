@@ -28,6 +28,8 @@ export function readDocsDir(dirPath = CONTENT_ROOT): DocNode[] {
       try {
         if (entry.isDirectory()) {
           const children = readDocsDir(fullPath)
+          // Directories backed by github.txt are rendered from the remote tree.
+          if (children.length === 0 && fs.existsSync(path.join(fullPath, "github.txt"))) continue
           result.push({ name: entry.name, path: fullPath, isDir: true, children })
         } else if (entry.name.endsWith(".md")) {
           const name = entry.name.replace(/\.md$/, "")

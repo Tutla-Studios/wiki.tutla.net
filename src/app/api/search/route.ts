@@ -18,9 +18,9 @@ function stripMd(s: string) {
     .trim()
 }
 
-function ensureFuse() {
+async function ensureFuse() {
   if (!fuse) {
-    docs = makeSearchIndex().map(d => ({ ...d, content: stripMd(d.content) }))
+    docs = (await makeSearchIndex()).map(d => ({ ...d, content: stripMd(d.content) }))
     fuse = new Fuse(docs, {
       keys: ["title", "summary", "content"],
       threshold: 0.3,
@@ -58,7 +58,7 @@ export const dynamic = "force-dynamic"
 
 export async function GET(req: NextRequest) {
   try {
-    ensureFuse()
+    await ensureFuse()
     const q = req.nextUrl.searchParams.get("q")?.trim() || ""
     if (!q) return NextResponse.json([])
 

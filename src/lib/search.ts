@@ -1,6 +1,7 @@
 import fs from "fs"
 import path from "path"
 import matter from "gray-matter"
+import { getAllRemotePages, loadRemoteContent, remoteTitle } from "./github"
 
 const CONTENT_ROOT = path.join(process.cwd(), "content")
 
@@ -18,9 +19,9 @@ function getAllMarkdownFiles(dir: string): string[] {
   return results
 }
 
-export function makeSearchIndex() {
+export async function makeSearchIndex() {
   const files = getAllMarkdownFiles(CONTENT_ROOT)
-  return files.map((file) => {
+  const local = files.map((file) => {
     const raw = fs.readFileSync(file, "utf8")
     const { data, content } = matter(raw)
     const slug = file
@@ -36,4 +37,19 @@ export function makeSearchIndex() {
       content,
     }
   })
+
+  // GitHub-backed pages (github.txt mounts). Markdown only, to keep the index lean.
+  const remote: typeof local = []
+  const pages = (await getAllRemotePages()).filter((p) => p.isMarkdown)
+  for (let i = 0; i < pages.length; i += 8) {
+    const batch = await Promise.all(
+      pages.slice(i, i + 8).map(async (p) => {
+        const c = await loadRemoteContent(p)
+        if (!c) return null
+        return { title: remoteTitle(p, c), summary: String(c.data.summary ?? ""), path: p.slug, content: c.content }
+      })
+    )
+    for (const b of batch) if (b) remote.push(b)
+  }
+  return [...local, ...remote]
 }

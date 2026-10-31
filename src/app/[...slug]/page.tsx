@@ -9,6 +9,16 @@ import DocLayout from "@/components/doc/DocLayout"
 import WikiLayout from "@/components/wiki/WikiLayout"
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
+import {
+  getAllRemotePages,
+  findRemotePage,
+  loadRemoteContent,
+  remoteTitle,
+  githubBlobUrl,
+  appendRemoteTrees,
+  type RemotePage,
+  type RemoteContent,
+} from "@/lib/github"
 
 const CONTENT_ROOT = path.join(process.cwd(), "content")
 const SITE_URL = "https://wiki.tutla.net"
@@ -48,6 +58,14 @@ export async function generateStaticParams(): Promise<{ slug: string[] }[]> {
       if (!entry.isDirectory() || entry.name.startsWith(".")) continue
       const config = loadSidebarConfig(entry.name)
       if (config?.faq) params.push({ slug: [entry.name, "faq"] })
+    }
+  }
+
+  // GitHub-backed pages (github.txt mounts)
+  for (const page of await getAllRemotePages()) {
+    const parts = page.slug.split("/").filter(Boolean)
+    if (!params.some((p) => p.slug.join("/").toLowerCase() === parts.join("/").toLowerCase())) {
+      params.push({ slug: parts })
     }
   }
 
@@ -121,6 +139,21 @@ export async function generateMetadata({
 
   const filePath = resolveFilePath(slugParts)
   if (!filePath) {
+    const remote = await findRemotePage(slugParts)
+    const remoteContent = remote ? await loadRemoteContent(remote) : null
+    if (remote && remoteContent) {
+      const rTitle = remoteTitle(remote, remoteContent)
+      const rDesc = String(remoteContent.data.summary ?? `${rTitle} on ${SITE_NAME}`)
+      const rUrl = `${SITE_URL}${remote.slug}`
+      return {
+        title: `${rTitle} — ${SITE_NAME}`,
+        description: rDesc,
+        alternates: { canonical: rUrl },
+        openGraph: { title: rTitle, description: rDesc, url: rUrl, siteName: SITE_NAME, type: "article" },
+        twitter: { card: "summary", title: rTitle, description: rDesc },
+        robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
+      }
+    }
     if (slugParts.length === 2 && slugParts[1] === "faq" && loadSidebarConfig(slugParts[0])?.faq) {
       return {
         title: `FAQ — ${SITE_NAME}`,
@@ -184,6 +217,53 @@ export async function generateMetadata({
   }
 }
 
+// ─── Remote (GitHub) page ─────────────────────────────────────────────────────
+
+async function renderRemote(remote: RemotePage, rc: RemoteContent, slugParts: string[]) {
+  const project = slugParts[0]
+  const title = remoteTitle(remote, rc)
+
+  let rendered
+  try {
+    rendered = await getMdxSource(rc.content, "md")
+  } catch {
+    // Fall back to a plain code block if the markdown can't be compiled.
+    const fence = "~~~~~~"
+    rendered = await getMdxSource(fence + "\n" + rc.content + "\n" + fence, "md")
+  }
+
+  const sidebarConfig = loadSidebarConfig(project)
+  const baseTree = sidebarConfig ? sidebarConfig.tree : readDocsDir(path.join(CONTENT_ROOT, project))
+  const docsTree = await appendRemoteTrees(baseTree, project)
+  const canonicalUrl = `${SITE_URL}${remote.slug}`
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    headline: title,
+    ...(rc.data.summary ? { description: String(rc.data.summary) } : {}),
+    url: canonicalUrl,
+    publisher: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
+  }
+
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <DocLayout
+        title={title}
+        docsTree={docsTree}
+        currentSlug={remote.slug}
+        headings={rendered.headings}
+        editUrl={githubBlobUrl(remote)}
+        breadcrumbs={remote.slug.split("/").filter(Boolean)}
+        links={sidebarConfig?.links}
+      >
+        <MdxRenderer mdxSource={rendered.mdxSource} />
+      </DocLayout>
+    </>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function WikiPage({
@@ -206,7 +286,7 @@ export default async function WikiPage({
         return (
           <DocLayout
             title="FAQ"
-            docsTree={config.tree}
+            docsTree={await appendRemoteTrees(config.tree, project)}
             currentSlug={`/${project}/faq`}
             headings={faqHeadings}
             editUrl={`https://github.com/TutlaMC/wiki.tutla.net/tree/main/content/${project}/sidebar.json`}
@@ -222,6 +302,13 @@ export default async function WikiPage({
           </DocLayout>
         )
       }
+    }
+
+    // GitHub-backed page (github.txt mount)
+    if (!filePath) {
+      const remote = await findRemotePage(slugParts)
+      const remoteContent = remote ? await loadRemoteContent(remote) : null
+      if (remote && remoteContent) return renderRemote(remote, remoteContent, slugParts)
     }
 
     if (!filePath) {
@@ -249,10 +336,10 @@ export default async function WikiPage({
     if (slugParts[0]) {
       const sidebarConfig = loadSidebarConfig(slugParts[0])
       if (sidebarConfig) {
-        docsTree = sidebarConfig.tree
+        docsTree = await appendRemoteTrees(sidebarConfig.tree, slugParts[0])
         links = sidebarConfig.links
       } else if (docRoot) {
-        docsTree = readDocsDir(docRoot)
+        docsTree = await appendRemoteTrees(readDocsDir(docRoot), slugParts[0])
       }
     }
 

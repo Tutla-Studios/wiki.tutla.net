@@ -6,7 +6,7 @@ import rehypeSlug from "rehype-slug"
 import { visit } from "unist-util-visit"
 import type { Root, Heading, Text } from "mdast"
 
-export async function getMdxSource(content: string) {
+export async function getMdxSource(content: string, format: "mdx" | "md" = "mdx") {
   const headings: { text: string; level: number }[] = []
   
   const remarkCollectHeadings = () => (tree: Root) => {
@@ -62,6 +62,7 @@ export async function getMdxSource(content: string) {
   try {
     const mdxSource = await serialize(content, {
       mdxOptions: {
+        format,
         remarkPlugins: [remarkGfm, remarkDeflist, remarkCollectHeadings, remarkNotifSyntax],
         rehypePlugins: [rehypeSlug, [rehypePrettyCode, { theme: "github-dark" }]],
       },
