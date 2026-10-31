@@ -2,7 +2,7 @@
 title: "Tutla Wiki"
 summary: "The open documentation and knowledge base for every Tutla project, plugin, mod, app and library."
 created: "2026-07-06"
-updated: "2026-07-06"
+updated: "2026-11-01"
 isdoc: false
 ---
 
