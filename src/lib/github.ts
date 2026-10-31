@@ -215,9 +215,12 @@ function fetchRaw(page: RemotePage): Promise<string | null> {
   return p
 }
 
+// GitHub edit link for the source file (non-collaborators are prompted to fork).
+// "HEAD" is not a valid edit ref, so fall back to the read-only blob view.
 export function githubBlobUrl(page: RemotePage): string {
   const { owner, repo, ref } = page.mount
-  return `https://github.com/${owner}/${repo}/blob/${ref}/${page.repoPath}`
+  const mode = ref === "HEAD" ? "blob" : "edit"
+  return `https://github.com/${owner}/${repo}/${mode}/${ref}/${page.repoPath}`
 }
 
 function rawUrl(page: RemotePage, repoPath: string): string {

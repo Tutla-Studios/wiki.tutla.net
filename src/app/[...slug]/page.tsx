@@ -289,7 +289,7 @@ export default async function WikiPage({
             docsTree={await appendRemoteTrees(config.tree, project)}
             currentSlug={`/${project}/faq`}
             headings={faqHeadings}
-            editUrl={`https://github.com/TutlaMC/wiki.tutla.net/tree/main/content/${project}/sidebar.json`}
+            editUrl={`https://github.com/TutlaMC/wiki.tutla.net/edit/main/content/${project}/sidebar.json`}
             breadcrumbs={[project, "faq"]}
             links={config.links}
           >
@@ -347,7 +347,7 @@ export default async function WikiPage({
     const canonicalUrl = `${SITE_URL}/${slugParts.filter((s) => s !== "index").join("/")}`
     const currentSlug = normalizeToSlug(filePath)
     const breadcrumbs = slugParts.filter((s) => s !== "index")
-    const editUrl = `https://github.com/TutlaMC/wiki.tutla.net/tree/main/${editPath}`
+    const editUrl = `https://github.com/TutlaMC/wiki.tutla.net/edit/main/${editPath}`
     const created = data.created ? String(data.created) : undefined
     const updated = data.updated ? String(data.updated) : undefined
 
