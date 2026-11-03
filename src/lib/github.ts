@@ -105,8 +105,8 @@ function headers(): Record<string, string> {
 
 const TEXT_EXT = new Set([
   "md", "mdx", "txt", "json", "yml", "yaml", "toml", "xml", "html", "css", "scss", "js", "jsx", "ts", "tsx",
-  "mjs", "cjs", "java", "kt", "kts", "py", "rs", "go", "c", "h", "cpp", "hpp", "cs", "rb", "php", "sh",
-  "bash", "zsh", "gradle", "properties", "lua", "sql", "ini", "cfg", "conf", "tsn", "mcmeta", "svelte", "vue",
+  "mjs", "cjs", "java", "kt", "kts", "py", "rs", "go", "c", "h", "cpp", "hpp", "cs", "rb", "php",
+  "gradle", "properties", "lua", "sql", "ini", "cfg", "conf", "tsn", "mcmeta", "svelte", "vue",
 ])
 const TEXT_NAMES = new Set(["license", "dockerfile", "makefile", "readme", "changelog", ".gitignore"])
 
