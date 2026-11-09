@@ -2,7 +2,7 @@
 title: "GitHub sync"
 summary: "Mirror a folder of a GitHub repository into the wiki by adding a github.txt file. Covers setup, how files become pages, linking, limits and troubleshooting."
 created: "2026-11-01"
-updated: "2026-11-01"
+updated: "2026-11-09"
 isdoc: true
 ---
 
@@ -70,6 +70,14 @@ Synced pages take part in the whole site, not only the sidebar:
 - **Sitemap** and **`llms.txt`**: every page is listed.
 - **Metadata**: each page gets a title, description, canonical URL, social tags and structured data.
 - **Edit link**: points at the file on GitHub, so fixes go to the source repository.
+
+## Sidebar from the repository
+
+A `sidebar.json` at the root of the synced folder is not turned into a page. It is used as the project's sidebar instead, with the same format as a local [sidebar.json](/tutla_wiki/features/sidebar), including `links` and `faq`. Page values can be absolute wiki URLs (`/tums/scripting/events`) or paths relative to the synced folder (`scripting/events.md`).
+
+If the project also has a local `content/<project>/sidebar.json`, the local one wins and the synced sidebar only fills in missing links and FAQ entries.
+
+This lets a project keep its whole documentation in its own repository. Tums does this: `content/tums/` only contains `github.txt`, pointing at the `docs` folder of the Tums repository, which holds the pages and `sidebar.json`.
 
 ## Combining with local pages
 

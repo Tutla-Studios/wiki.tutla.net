@@ -1,0 +1,3 @@
+# Tums docs live in the Tums repository (docs/ folder) and are synced from GitHub.
+# See /tutla_wiki/features/github-sync
+https://github.com/Tutla-Studios/tums/tree/main/docs
