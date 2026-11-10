@@ -2,7 +2,7 @@
 title: "GitHub sync"
 summary: "Mirror a folder of a GitHub repository into the wiki by adding a github.txt file. Covers setup, how files become pages, linking, limits and troubleshooting."
 created: "2026-11-01"
-updated: "2026-11-09"
+updated: "2026-11-10"
 isdoc: true
 ---
 
@@ -93,7 +93,23 @@ content/tums/
 
 ## Freshness
 
-The GitHub file list and contents are cached for one hour. Pages are generated when the site is built, so a change in the repository appears after the wiki's next deployment. Sitemap and `llms.txt` refresh on their own hourly schedule. If you need an update sooner, ask a maintainer to redeploy.
+Synced pages refresh on their own. No rebuild is needed:
+
+- Every page is pre-rendered at build time and then regenerated in the background at most **every hour**. The first visitor after that window still gets the old page while the new one is built. The next visitor sees the update.
+- GitHub responses are cached for the same hour, both in Next.js's data cache and in memory on the server.
+- Sitemap and `llms.txt` refresh hourly as well.
+
+Restarting the server does **not** refresh anything by itself. It only serves what is already built or cached.
+
+### Refreshing immediately
+
+Set a `REVALIDATE_SECRET` environment variable on the server, then call:
+
+```text
+https://wiki.tutla.net/api/revalidate?secret=YOUR_SECRET
+```
+
+This clears every GitHub cache and marks all pages stale. It accepts `GET` and `POST`, so you can add it as a **webhook** (push events) on a synced repository and the wiki will update on every push. Without the variable set, the endpoint always answers `401`.
 
 ## Rate limits and private repositories
 
@@ -107,6 +123,7 @@ GitHub allows 60 unauthenticated API requests per hour per address. Maintainers 
 | Some files are missing | They are binary, over 300 KB, or inside a dot-folder. Very large repositories may be truncated by GitHub; point the mount at a subfolder instead. |
 | A link goes to GitHub instead of the wiki | The target file is not inside the synced folder. |
 | Sidebar group is missing | The project already has a sidebar entry under the same URL prefix, so the automatic one was skipped. |
+| Repository changed but the page did not | Wait up to an hour and reload twice (the first reload triggers the rebuild), or call `/api/revalidate`. A restart alone does not refresh. |
 | 404 on a folder URL | The folder has no `README.md` or `index.md`, so there is no page for it. Folders without one only group their children in the sidebar. |
 
 ## Writing good synced docs

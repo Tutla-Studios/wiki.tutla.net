@@ -25,6 +25,12 @@ const CONTENT_ROOT = path.join(process.cwd(), "content")
 const SITE_URL = "https://wiki.tutla.net"
 const SITE_NAME = "Tutla Wiki"
 
+// ─── Revalidation (ISR) ───────────────────────────────────────────────────────
+// Pages are pre-rendered at build time, then regenerated in the background at
+// most every hour so GitHub-synced pages pick up repository changes
+// without a rebuild. Must be a literal; matches REVALIDATE in lib/github.ts.
+export const revalidate = 3600
+
 // ─── Static params (SSG) ──────────────────────────────────────────────────────
 // This tells Next.js to pre-render every .md file at build time.
 // Result: static HTML files served instantly, no server needed, perfect for SEO.

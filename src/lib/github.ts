@@ -12,7 +12,9 @@ import { parseSidebarConfig, loadSidebarConfig, type DocNode, type SidebarConfig
 // GITHUB_TOKEN to raise rate limits or read private repos.
 
 const CONTENT_ROOT = path.join(process.cwd(), "content")
-const REVALIDATE = 3600
+// Seconds before synced content is fetched again. Keep in sync with the
+// `revalidate` export in src/app/[...slug]/page.tsx.
+export const REVALIDATE = 3600
 const MAX_FILE_BYTES = 300_000
 
 export const GITHUB_FILE = "github.txt"
@@ -95,6 +97,30 @@ export function findMountsForProject(project: string): GithubMount[] {
   return findGithubMounts().filter((m) => m.parts[0].toLowerCase() === project.toLowerCase())
 }
 
+// ─── In-memory caches ────────────────────────────────────────────────────────
+// Dedupes requests while a page renders. Without a TTL these would live for the
+// whole `next start` process and serve stale content forever, so they are
+// dropped every REVALIDATE seconds (or immediately via clearGithubCache()).
+
+const caches: Map<string, unknown>[] = []
+let cacheStamp = Date.now()
+
+function cacheMap<T>(): Map<string, T> {
+  const m = new Map<string, T>()
+  caches.push(m as Map<string, unknown>)
+  return m
+}
+
+function expireCaches() {
+  if (Date.now() - cacheStamp > REVALIDATE * 1000) clearGithubCache()
+}
+
+export function clearGithubCache() {
+  for (const m of caches) m.clear()
+  mountCache = null
+  cacheStamp = Date.now()
+}
+
 // ─── Fetching ────────────────────────────────────────────────────────────────
 
 function headers(): Record<string, string> {
@@ -123,11 +149,12 @@ function slugSegment(s: string): string {
 
 interface TreeEntry { path: string; type: string; size?: number }
 
-const pageCache = new Map<string, Promise<RemotePage[]>>()
+const pageCache = cacheMap<Promise<RemotePage[]>>()
 
-const treeCache = new Map<string, Promise<TreeEntry[]>>()
+const treeCache = cacheMap<Promise<TreeEntry[]>>()
 
 function getMountTree(mount: GithubMount): Promise<TreeEntry[]> {
+  expireCaches()
   let p = treeCache.get(mount.prefix)
   if (!p) {
     p = fetchTree(mount).catch((e) => {
@@ -189,6 +216,7 @@ async function fetchMountPages(mount: GithubMount): Promise<RemotePage[]> {
 }
 
 export function getMountPages(mount: GithubMount): Promise<RemotePage[]> {
+  expireCaches()
   let p = pageCache.get(mount.prefix)
   if (!p) {
     p = fetchMountPages(mount).catch((e) => {
@@ -216,11 +244,12 @@ export async function findRemotePage(slugParts: string[]): Promise<RemotePage | 
 
 // ─── Content ─────────────────────────────────────────────────────────────────
 
-const contentCache = new Map<string, Promise<string | null>>()
+const contentCache = cacheMap<Promise<string | null>>()
 
 function fetchRaw(mount: GithubMount, repoPath: string): Promise<string | null> {
   const { owner, repo, ref } = mount
   const id = `${owner}/${repo}@${ref}:${repoPath}`
+  expireCaches()
   let p = contentCache.get(id)
   if (!p) {
     const url = `https://raw.githubusercontent.com/${owner}/${repo}/${encodeURIComponent(ref)}/${repoPath.split("/").map(encodeURIComponent).join("/")}`
@@ -366,9 +395,10 @@ function resolveSidebarValue(mount: GithubMount, value: string): string {
   return cleaned ? `${mount.prefix}/${cleaned}` : mount.prefix
 }
 
-const sidebarCache = new Map<string, Promise<SidebarConfig | null>>()
+const sidebarCache = cacheMap<Promise<SidebarConfig | null>>()
 
 export function getMountSidebar(mount: GithubMount): Promise<SidebarConfig | null> {
+  expireCaches()
   let p = sidebarCache.get(mount.prefix)
   if (!p) {
     p = (async () => {
